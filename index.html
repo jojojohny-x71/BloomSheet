@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lot-cap takeover — motion prototype</title>
+<style>
+  :root{
+    --lime:#b9f641;
+    --lime-deep:#7ed321;
+    --green:#0e8345;
+    --green-txt:#1a9e57;
+    --red:#e5484d;
+    --ink:#17181c;
+    --paper:#faf9f6;
+    --dur-veil:640ms;
+    --dur-item:560ms;
+    --ease-out:cubic-bezier(0.16,1,0.3,1);
+    --ease-std:cubic-bezier(0.2,0,0,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:#0c0d0f;
+    display:flex;align-items:center;justify-content:center;gap:36px;
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  .hint{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    color:#5b5f66;font-size:12.5px;letter-spacing:.02em;user-select:none;
+  }
+  .hint b{color:#9aa0a8;font-weight:600}
+
+  /* ============ PHONE FRAME ============ */
+  .phone{
+    position:relative;
+    width:min(400px, 41vh);
+    aspect-ratio:400/866;
+    border-radius:44px;
+    background:var(--paper);
+    box-shadow:0 0 0 10px #1b1c1f, 0 0 0 11.5px #2e3035, 0 40px 90px rgba(0,0,0,.6);
+    overflow:hidden;
+    font-size:clamp(9px, calc(min(400px,41vh)/400*15), 15px);
+  }
+  .screen{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;
+    transition:transform var(--dur-veil) var(--ease-std), filter var(--dur-veil) var(--ease-std);
+    background:var(--paper);
+  }
+  .open .screen{ transform:scale(0.965); filter:brightness(.9); }
+
+  /* ---- status bar ---- */
+  .status{display:flex;justify-content:flex-end;align-items:center;gap:.35em;padding:.9em 1.6em .4em;color:#1c1d21;font-weight:700;font-size:1em}
+  .status svg{display:block}
+
+  /* ---- header ---- */
+  .hdr{display:flex;align-items:center;gap:.7em;padding:.5em 1.1em .7em}
+  .back{font-size:1.5em;line-height:1;color:#17181c;background:none;border:0}
+  .chip-all{display:flex;align-items:center;gap:.5em;font-weight:700;color:#3a3d44;font-size:.95em;letter-spacing:.04em}
+  .pl-chip{background:#e4f3d4;color:#2f7d33;font-weight:700;border-radius:1.2em;padding:.28em .7em;font-size:.85em}
+  .acct{flex:1;display:flex;align-items:center;gap:.5em;background:#fff;border:1px solid #ececea;border-radius:1.6em;padding:.4em .7em;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .avatar{width:1.9em;height:1.9em;border-radius:50%;background:linear-gradient(135deg,#c9a97e,#8b6f4e);position:relative;flex:none}
+  .avatar::after{content:"";position:absolute;right:-1px;bottom:-1px;width:.55em;height:.55em;border-radius:50%;background:#22c55e;border:2px solid #fff}
+  .acct .nm{font-weight:700;color:#26282d;font-size:.95em;white-space:nowrap}
+  .acct .x{margin-left:auto;color:#5b5f66;font-size:1.05em}
+  .add{width:2.2em;height:2.2em;border-radius:50%;border:1.5px dashed #d8b465;color:#26282d;font-size:1.1em;background:#fff;display:grid;place-items:center;flex:none}
+
+  /* ---- tabs ---- */
+  .tabs{display:flex;align-items:center;border-bottom:1.5px dashed #dddcd6;padding:0 .4em}
+  .tab{flex:1;display:flex;align-items:center;justify-content:center;gap:.5em;padding:.95em .2em;font-weight:700;color:#26282d;font-size:.98em;border-right:1px solid #ececea}
+  .tab:last-of-type{border-right:0}
+  .boost{position:relative;flex:none;width:3.6em;align-self:stretch;background:linear-gradient(135deg,#ffe9a8,#ffd76a);border-radius:1em 0 0 0;display:grid;place-items:center;margin-left:.3em}
+  .boost .n{position:absolute;top:.3em;right:.35em;background:#fff;border-radius:50%;width:1.25em;height:1.25em;display:grid;place-items:center;font-size:.7em;font-weight:800;color:#17181c;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+
+  /* ---- symbol row ---- */
+  .sym{padding:1em 1.2em .4em;display:flex;justify-content:space-between;align-items:flex-start}
+  .sym h2{font-size:1.25em;font-weight:800;color:#26282d;display:flex;gap:.55em;align-items:center}
+  .ud{color:#8a8f98;font-size:.75em;letter-spacing:-.05em}
+  .price-line{font-size:1.15em;font-weight:800;color:#26282d;margin-top:.25em;font-variant-numeric:tabular-nums}
+  .price-line b{color:#1a9e57;font-weight:700}
+  .cfg{width:2.6em;height:2.6em;border-radius:.9em;background:#fff;border:1px solid #ececea;display:grid;place-items:center;position:relative}
+  .cfg::after{content:"";position:absolute;top:.5em;right:.5em;width:.5em;height:.5em;border-radius:50%;background:#3b82f6}
+
+  /* ---- chart ---- */
+  .chart{position:relative;flex:1;min-height:0;display:flex}
+  .plot{position:relative;flex:1;border-right:1px solid #e7e6e1}
+  .plot svg{position:absolute;inset:0;width:100%;height:100%}
+  .axis{width:6.2em;position:relative;font-variant-numeric:tabular-nums}
+  .axis span{position:absolute;right:.9em;transform:translateY(-50%);color:#b4b8bf;font-weight:600;font-size:.95em}
+  .ltp{position:absolute;right:0;left:.4em;transform:translateY(-50%);background:var(--green);color:#fff;font-weight:700;font-size:.95em;text-align:center;padding:.32em 0;border-radius:.35em 0 0 .35em}
+  .dash{position:absolute;left:0;right:0;border-top:1.5px dashed #c9cdd3}
+
+  .callout{position:absolute;font-size:.9em;font-weight:700;padding:.34em .7em;border-radius:1.2em;background:#fff;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+  .callout.sl{border:1.5px solid #f3c9cb;color:#3a3d44}
+  .callout.sl b{color:var(--red)}
+  .callout.tp{border:1.5px solid #cde8cf;color:#3a3d44}
+  .callout.tp b{color:#1a9e57}
+
+  .analyzing{
+    position:absolute;display:flex;align-items:center;gap:.6em;
+    background:#fdfff5;border:1.5px solid #86d24a;border-radius:1em;
+    padding:.55em .9em .55em .7em;box-shadow:0 4px 16px rgba(110,190,60,.22);
+  }
+  .analyzing::before{
+    content:"";position:absolute;left:-0.62em;top:50%;width:1em;height:1em;
+    background:#fdfff5;border-left:1.5px solid #86d24a;border-bottom:1.5px solid #86d24a;
+    transform:translateY(-50%) rotate(45deg);border-radius:0 0 0 .2em;
+  }
+  .analyzing .t1{font-weight:700;color:#26282d;font-size:.95em}
+  .analyzing .t2{color:#8a8f98;font-size:.85em;font-weight:600}
+  .analyzing .dots::after{content:"..";animation:think 1.2s steps(3) infinite}
+  @keyframes think{0%{content:"."}50%{content:".."}100%{content:"..."}}
+
+  .hot-candle{
+    position:absolute;border-radius:.25em;
+    box-shadow:0 0 0 3px rgba(255,235,59,.9), 0 0 14px rgba(255,235,59,.65);
+    animation:hotpulse 1.6s ease-in-out infinite;
+  }
+  @keyframes hotpulse{
+    0%,100%{box-shadow:0 0 0 3px rgba(255,235,59,.9),0 0 10px rgba(255,235,59,.5)}
+    50%{box-shadow:0 0 0 3px rgba(255,235,59,.95),0 0 22px rgba(255,235,59,.85)}
+  }
+
+  .times{display:flex;justify-content:space-between;padding:.6em 1.1em;color:#8a8f98;font-weight:600;font-size:.92em;border-top:1px solid #eeede8}
+  .times .tf{color:#26282d;font-weight:800}
+
+  /* ---- option row ---- */
+  .opt{margin:0 .7em;background:#fff;border:1.5px solid #f0e2b6;border-radius:1.1em;padding:.8em 1em;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .opt h3{font-size:1.05em;font-weight:800;color:#26282d;display:flex;gap:.5em;align-items:center}
+  .opt .price-line{font-size:1.05em}
+
+  /* ---- order panel ---- */
+  .seg{display:flex;justify-content:center;margin:.9em 0 .7em}
+  .seg-in{display:flex;background:#fff;border:1px solid #ececea;border-radius:2em;padding:.28em;gap:.2em;box-shadow:0 1px 5px rgba(0,0,0,.05)}
+  .seg-btn{border:0;background:none;border-radius:1.6em;padding:.5em 1.3em;font-weight:700;font-size:.98em;color:#26282d}
+  .seg-btn.on{background:#17181c;color:#fff}
+  .actions{display:flex;align-items:center;justify-content:space-between;padding:0 1.1em;gap:.6em}
+  .btn-trade{border:0;border-radius:2em;padding:1em 1.5em;font-weight:800;font-size:1.05em;white-space:nowrap;transition:transform 140ms var(--ease-std)}
+  .btn-trade:active{transform:scale(0.96)}
+  .buy{background:var(--lime);color:#17331a;box-shadow:0 4px 14px rgba(150,220,60,.4)}
+  .sell{background:#fff;color:#26282d;border:1.5px solid #e3e2dd !important;border:0}
+  .qty{display:flex;align-items:center;gap:.7em}
+  .step{width:2.4em;height:2.4em;border-radius:50%;background:#fff;border:1px solid #ececea;font-size:1.1em;color:#26282d;font-weight:700}
+  .qty .v{text-align:center;font-variant-numeric:tabular-nums}
+  .qty .v .n{font-weight:800;font-size:1.3em;color:#26282d}
+  .qty .v .l{color:#8a8f98;font-weight:600;font-size:.85em}
+  .margins{display:flex;justify-content:space-between;padding:.7em 1.3em 1.6em;color:#6a6f77;font-weight:600;font-size:.88em;font-variant-numeric:tabular-nums}
+
+  /* ============ FLOATING ASSIST (pill + mascot) ============ */
+  .assist{
+    position:absolute;right:.6em;display:flex;align-items:center;z-index:20;
+    bottom:31%;
+    transition:opacity 300ms var(--ease-std), transform 380ms var(--ease-std);
+    transform-origin:100% 50%;
+  }
+  .open .assist{opacity:0;transform:scale(.82);pointer-events:none;transition-duration:260ms}
+  .assist-pill{
+    display:flex;align-items:center;gap:.5em;
+    background:linear-gradient(105deg,#123420, #0d2417 55%, #143a22);
+    color:#f2fbe9;border:0;font-weight:600;font-size:.98em;
+    padding:.95em 2.6em .95em 1.2em;margin-right:-2.1em;
+    border-radius:1.4em .4em .4em 1.4em;
+    box-shadow:0 8px 24px rgba(10,40,20,.35);
+    animation:pill-in 640ms var(--ease-out) both;
+    transition:transform 140ms var(--ease-std);
+  }
+  .assist-pill:active{transform:scale(0.96)}
+  .assist-pill .chev{opacity:.8;font-size:1.05em}
+  @keyframes pill-in{from{opacity:0;transform:translateX(1.6em)}to{opacity:1;transform:none}}
+  .mascot{
+    position:relative;width:4.3em;height:4.3em;border-radius:50%;border:0;flex:none;
+    background:radial-gradient(circle at 32% 28%, #1d4a2c, #08130b 70%);
+    box-shadow:0 6px 20px rgba(20,60,30,.45), 0 0 0 1px rgba(185,246,65,.25) inset;
+    display:grid;place-items:center;
+    transition:transform 140ms var(--ease-std);
+  }
+  .mascot:active{transform:scale(0.94)}
+  .mascot::before{
+    content:"";position:absolute;inset:-6px;border-radius:50%;
+    background:radial-gradient(circle, rgba(185,246,65,.45), transparent 70%);
+    filter:blur(6px);z-index:-1;
+    animation:breathe 2.8s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+  .mascot svg{width:62%;height:62%}
+
+  /* ============ TAKEOVER OVERLAY ============ */
+  .overlay{position:absolute;inset:0;z-index:30;pointer-events:none}
+  .open .overlay{pointer-events:auto}
+
+  .veil{
+    position:absolute;inset:0;
+    -webkit-backdrop-filter:blur(0px) saturate(1);
+    backdrop-filter:blur(0px) saturate(1);
+    background:rgba(8,22,12,0);
+    transition:backdrop-filter var(--dur-veil) var(--ease-std),
+               -webkit-backdrop-filter var(--dur-veil) var(--ease-std),
+               background var(--dur-veil) var(--ease-std);
+  }
+  .open .veil{
+    -webkit-backdrop-filter:blur(11px) saturate(.95);
+    backdrop-filter:blur(11px) saturate(.95);
+    background:rgba(8,22,12,.32);
+  }
+
+  .bloom{
+    position:absolute;inset:0;opacity:0;
+    transform:translateY(9%) scale(1.08);
+    transform-origin:70% 100%;
+    transition:opacity 700ms var(--ease-std), transform 900ms var(--ease-out);
+    background:
+      radial-gradient(120% 68% at 50% 112%, rgba(190,255,90,.85), rgba(46,168,86,.42) 42%, rgba(20,80,44,0) 72%),
+      linear-gradient(to top, rgba(30,120,60,.55), rgba(18,70,38,.22) 38%, transparent 62%);
+  }
+  .open .bloom{opacity:1;transform:none}
+  .bloom::before{
+    content:"";position:absolute;right:-15%;bottom:-12%;width:70%;aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle, rgba(215,255,130,.9), rgba(150,230,90,.35) 45%, transparent 70%);
+    filter:blur(24px);opacity:0;
+  }
+  .open .bloom::before{animation:ignite 1100ms var(--ease-std) both}
+  @keyframes ignite{0%{opacity:0;transform:scale(.55)}30%{opacity:.9}100%{opacity:0;transform:scale(1.5)}}
+  .bloom::after{
+    content:"";position:absolute;left:-10%;right:-10%;bottom:-18%;height:55%;
+    background:radial-gradient(closest-side, rgba(220,255,140,.55), transparent 72%);
+    filter:blur(30px);
+    animation:bloom-breathe 5.5s ease-in-out infinite;
+  }
+  @keyframes bloom-breathe{0%,100%{opacity:.6;transform:scaleX(1)}50%{opacity:1;transform:scaleX(1.08) translateY(-2%)}}
+
+  .sheet{
+    position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:0 0 2em;color:#fff;
+  }
+  .stag{
+    opacity:0;transform:translateY(1.9em);filter:blur(7px);
+    transition:opacity var(--dur-item) var(--ease-std),
+               transform var(--dur-item) var(--ease-out),
+               filter var(--dur-item) var(--ease-std);
+    transition-delay:0ms;
+  }
+  .open .stag{opacity:1;transform:none;filter:blur(0)}
+  .open .d1{transition-delay:170ms}
+  .open .d2{transition-delay:240ms}
+  .open .d3{transition-delay:310ms}
+  .open .d4{transition-delay:390ms}
+  .open .d5{transition-delay:460ms}
+  .open .d6{transition-delay:540ms}
+  .card.stag{transform:translateY(1.9em) scale(.95)}
+  .open .card.stag{transform:none}
+  .open .badge{letter-spacing:.3em}
+
+  .flies{position:absolute;inset:0;opacity:0;transition:opacity 900ms var(--ease-std) 300ms;pointer-events:none}
+  .open .flies{opacity:1}
+  .flies i{
+    position:absolute;width:.45em;height:.45em;border-radius:50%;background:#dcff8a;filter:blur(1.5px);
+    box-shadow:0 0 12px 4px rgba(200,255,120,.5);animation:drift 9s ease-in-out infinite;
+  }
+  .flies i:nth-child(1){left:18%;bottom:22%;animation-duration:8s}
+  .flies i:nth-child(2){left:70%;bottom:30%;animation-duration:11s;animation-delay:-3s;transform:scale(.7)}
+  .flies i:nth-child(3){left:42%;bottom:12%;animation-duration:9.5s;animation-delay:-6s}
+  .flies i:nth-child(4){left:86%;bottom:16%;animation-duration:12s;animation-delay:-1.5s;transform:scale(.6)}
+  @keyframes drift{
+    0%,100%{translate:0 0;opacity:.2}
+    25%{translate:.6em -2.2em;opacity:.85}
+    50%{translate:-.4em -4em;opacity:.45}
+    75%{translate:.5em -1.8em;opacity:.8}
+  }
+
+  .badge{
+    align-self:flex-start;margin:0 1.5em .9em;
+    display:flex;align-items:center;gap:.6em;
+    background:rgba(10,26,14,.55);border:1px solid rgba(185,246,65,.18);
+    border-radius:.55em;padding:.55em 1em;
+    color:var(--lime);font-weight:700;font-size:.85em;letter-spacing:.55em;
+    transition:opacity var(--dur-item) var(--ease-std),
+               transform var(--dur-item) var(--ease-out),
+               filter var(--dur-item) var(--ease-std),
+               letter-spacing 1100ms var(--ease-out);
+  }
+  .badge .sp{letter-spacing:0;animation:twinkle 2.2s ease-in-out infinite}
+  .badge .sp:last-child{animation-delay:1.1s}
+  @keyframes twinkle{0%,100%{opacity:.5;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
+
+  .sheet h1{font-size:3.4em;font-weight:650;letter-spacing:-.02em;margin:0 .44em .15em;line-height:1.05;text-wrap:balance}
+  .sheet .sub{font-size:1.5em;font-weight:500;color:rgba(240,248,240,.92);margin:0 1em 1.2em}
+  .sheet .sub b{color:var(--lime);font-weight:700;font-variant-numeric:tabular-nums}
+
+  .cards{
+    display:flex;gap:.9em;padding:0 1.5em;margin-bottom:1.6em;
+    overflow-x:auto;scrollbar-width:none;
+  }
+  .cards::-webkit-scrollbar{display:none}
+  .card{
+    flex:none;width:76%;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.28);
+    border-radius:1.1em;padding:1.2em 1.2em 1.1em;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    cursor:pointer;
+    transition:transform 160ms var(--ease-std), background 160ms var(--ease-std),
+               opacity var(--dur-item) var(--ease-std), filter var(--dur-item) var(--ease-std);
+  }
+  .card:active{transform:scale(0.97)}
+  .card h4{font-size:1.35em;font-weight:650;letter-spacing:-.01em;line-height:1.25;margin-bottom:.5em;text-wrap:balance}
+  .card .meta{color:rgba(235,243,235,.75);font-size:1em;font-weight:500;margin-bottom:1.1em}
+  .card .foot{display:flex;justify-content:space-between;align-items:center}
+  .wr{background:rgba(8,20,10,.65);border-radius:.45em;padding:.4em .7em;font-size:.9em;font-weight:600;color:#e8f2e6}
+  .wr b{color:var(--lime)}
+  .card .arrow{font-size:1.4em;line-height:1}
+
+  .ignore{
+    align-self:center;width:66%;
+    background:#101216;color:#fff;border:0;border-radius:2em;
+    padding:1.05em;font-size:1.25em;font-weight:600;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+    transition:transform 140ms var(--ease-std),
+               opacity var(--dur-item) var(--ease-std), filter var(--dur-item) var(--ease-std);
+    cursor:pointer;
+  }
+  .ignore:active{transform:scale(0.96)}
+
+  /* closing = faster, softer */
+  .closing .stag{
+    opacity:0;transform:translateY(.9em);filter:blur(4px);
+    transition-duration:240ms;transition-delay:0ms !important;
+  }
+  .closing .veil{transition-delay:90ms;transition-duration:420ms}
+  .closing .bloom{opacity:0;transform:translateY(5%);transition-delay:60ms;transition-duration:380ms}
+  .closing .screen{transition-delay:90ms}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation:none !important;transition-duration:1ms !important;transition-delay:0ms !important}
+  }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+
+  <!-- ================= SCREEN 1 : trading UI ================= -->
+  <div class="screen">
+    <div class="status">
+      <span>12:30</span>
+    </div>
+
+    <div class="hdr">
+      <button class="back">←</button>
+      <div class="chip-all">ALL <span class="pl-chip">+₹300</span></div>
+      <div class="acct">
+        <div class="avatar"></div>
+        <span class="nm">Prime …</span>
+        <span class="pl-chip">+₹1,20,000</span>
+        <span class="x">✕</span>
+      </div>
+      <div class="avatar" style="opacity:.7"></div>
+      <button class="add">＋</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab">〽 Positions</div>
+      <div class="tab">🗒 Orders</div>
+      <div class="tab">🔗 Option chain</div>
+      <div class="boost">⚡<span class="n">2</span></div>
+    </div>
+
+    <div class="sym">
+      <div>
+        <h2>NIFTY 50 <span class="ud">⇕</span> SPOT <span class="ud">⇕</span></h2>
+        <div class="price-line">2499.40 <b>+27.69 (0.10%)</b></div>
+      </div>
+      <div class="cfg">☰</div>
+    </div>
+
+    <div class="chart">
+      <div class="plot">
+        <svg viewBox="0 0 320 470" preserveAspectRatio="none">
+          <g stroke-width="1.4">
+            <!-- lower-left ascending cluster -->
+            <g>
+              <line x1="14" y1="380" x2="14" y2="428" stroke="#1a9e57"/><rect x="9" y="388" width="10" height="26" fill="#1a9e57"/>
+              <line x1="30" y1="356" x2="30" y2="410" stroke="#e5484d"/><rect x="25" y="364" width="10" height="30" fill="#e5484d"/>
+              <line x1="46" y1="330" x2="46" y2="392" stroke="#1a9e57"/><rect x="41" y="338" width="10" height="40" fill="#1a9e57"/>
+              <line x1="62" y1="318" x2="62" y2="372" stroke="#e5484d"/><rect x="57" y="326" width="10" height="28" fill="#e5484d"/>
+              <line x1="78" y1="296" x2="78" y2="352" stroke="#e5484d"/><rect x="73" y="304" width="10" height="34" fill="#e5484d"/>
+              <line x1="94" y1="322" x2="94" y2="376" stroke="#1a9e57"/><rect x="89" y="330" width="10" height="34" fill="#1a9e57"/>
+              <line x1="110" y1="352" x2="110" y2="400" stroke="#e5484d"/><rect x="105" y="360" width="10" height="26" fill="#e5484d"/>
+              <line x1="126" y1="364" x2="126" y2="404" stroke="#e5484d"/><rect x="121" y="370" width="10" height="22" fill="#e5484d"/>
+              <line x1="142" y1="330" x2="142" y2="392" stroke="#1a9e57"/><rect x="137" y="338" width="10" height="40" fill="#1a9e57"/>
+              <line x1="158" y1="296" x2="158" y2="352" stroke="#1a9e57"/><rect x="153" y="304" width="10" height="36" fill="#1a9e57"/>
+              <line x1="174" y1="268" x2="174" y2="316" stroke="#e5484d"/><rect x="169" y="276" width="10" height="26" fill="#e5484d"/>
+              <line x1="190" y1="236" x2="190" y2="296" stroke="#1a9e57"/><rect x="185" y="244" width="10" height="40" fill="#1a9e57"/>
+            </g>
+            <!-- the big green run -->
+            <line x1="212" y1="52" x2="212" y2="252" stroke="#0e8345"/>
+            <rect x="206" y="66" width="12" height="176" fill="#0e8345"/>
+            <!-- top cluster with SL hits -->
+            <line x1="230" y1="88" x2="230" y2="132" stroke="#e5484d"/><rect x="225" y="94" width="10" height="28" fill="#e5484d"/>
+            <line x1="246" y1="104" x2="246" y2="152" stroke="#e5484d"/><rect x="241" y="112" width="10" height="30" fill="#e5484d"/>
+            <line x1="262" y1="92" x2="262" y2="140" stroke="#1a9e57"/><rect x="257" y="100" width="10" height="30" fill="#1a9e57"/>
+            <!-- current highlighted candle (drawn by .hot-candle div) -->
+            <line x1="284" y1="118" x2="284" y2="188" stroke="#0e8345"/>
+          </g>
+        </svg>
+        <div class="dash" style="top:31%"></div>
+        <div class="hot-candle" style="left:calc(284/320*100% - 1.9%);top:27.5%;width:3.8%;height:9.5%;background:#0e8345"></div>
+
+        <div class="callout sl" style="left:8%;top:12%">SL Hit <b>-50</b></div>
+        <div class="callout sl" style="left:11%;top:19.5%">SL Hit <b>-50</b></div>
+        <div class="callout tp" style="left:6%;top:51%">TP hit <b>+50</b></div>
+        <div class="callout tp" style="left:4%;top:63%">TP hit <b>+50</b></div>
+
+        <div class="analyzing" style="left:34%;top:23%">
+          <svg viewBox="0 0 40 40" width="30" height="30">
+            <circle cx="20" cy="23" r="11" fill="none" stroke="#8bc34a" stroke-width="5"/>
+            <path d="M22 10 q6 -7 12 -4 q-2 8 -10 8 z" fill="#7ed321"/>
+          </svg>
+          <div>
+            <div class="t1">Analyzing entry<span class="dots"></span></div>
+            <div class="t2">EMA cross</div>
+          </div>
+        </div>
+      </div>
+      <div class="axis">
+        <span style="top:4%">25200.2</span>
+        <span style="top:15%">25150.4</span>
+        <span style="top:27%">25050.2</span>
+        <div class="ltp" style="top:31%">25060.2</div>
+        <span style="top:38%;color:#26282d;font-weight:800">25050.2</span>
+        <span style="top:50%">24990.3</span>
+        <span style="top:61%">24950.1</span>
+        <span style="top:72%">25900.4</span>
+        <span style="top:83%">25900.4</span>
+        <span style="top:94%">25900.4</span>
+      </div>
+    </div>
+
+    <div class="times">
+      <span>9:15</span><span>10:15</span><span>11:15</span><span>1:15</span><span>2:15</span><span>3:15</span><span class="tf">5min ▾</span>
+    </div>
+
+    <div class="opt">
+      <div>
+        <h3>NIFTY 16SEP 2500 <span class="ud">⇕</span> Call <span class="ud">⇕</span></h3>
+        <div class="price-line">120.45 <b>+27.69 (0.10%)</b></div>
+      </div>
+      <div class="cfg">☰</div>
+    </div>
+
+    <div class="seg">
+      <div class="seg-in">
+        <button class="seg-btn on">Market</button>
+        <button class="seg-btn">Limit/Trigger</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-trade buy">Buy at mkt</button>
+      <div class="qty">
+        <button class="step">−</button>
+        <div class="v"><div class="n">10000</div><div class="l">91 Lots</div></div>
+        <button class="step">＋</button>
+      </div>
+      <button class="btn-trade sell">Sell at mkt</button>
+    </div>
+    <div class="margins">
+      <span>Margin: ₹9,180</span><span>Funds: ₹344.75</span><span>Margin: ₹2,04,180</span>
+    </div>
+  </div>
+
+  <!-- ================= floating assist ================= -->
+  <div class="assist">
+    <button class="assist-pill" id="pill">Hi! You’re over your 4 lot cap <span class="chev">›</span></button>
+    <button class="mascot" id="mascot" aria-label="Open assistant">
+      <svg viewBox="0 0 40 40">
+        <defs>
+          <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#d8ff70"/><stop offset="1" stop-color="#6db32e"/>
+          </linearGradient>
+        </defs>
+        <circle cx="20" cy="23" r="10.5" fill="none" stroke="url(#ring)" stroke-width="5.5"/>
+        <path d="M22 10 q6 -7 12 -4 q-2 8 -10 8 z" fill="#9be34f"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ================= SCREEN 2 : takeover ================= -->
+  <div class="overlay" aria-hidden="true">
+    <div class="veil" id="veil"></div>
+    <div class="bloom"></div>
+    <div class="flies"><i></i><i></i><i></i><i></i></div>
+    <div class="sheet">
+      <div class="badge stag d1"><span class="sp">✦</span> RULE TRIGGERED <span class="sp">✦</span></div>
+      <h1 class="stag d2">Hey Palak</h1>
+      <p class="sub stag d3">You’ve taken <b><span id="tcount">5</span>/5</b> trades today</p>
+      <div class="cards">
+        <div class="card stag d4">
+          <h4>EMA 9 crosses EMA 21</h4>
+          <div class="meta">Call, Nifty 50, 5min…</div>
+          <div class="foot"><span class="wr">Win rate <b>72%</b></span><span class="arrow">→</span></div>
+        </div>
+        <div class="card stag d5">
+          <h4>RSI is below 30 &amp; EMA crosses 21</h4>
+          <div class="meta">Call, Nifty 50, 5min…</div>
+          <div class="foot"><span class="wr">Win rate <b>68%</b></span><span class="arrow">→</span></div>
+        </div>
+      </div>
+      <button class="ignore stag d6" id="ignore">Ignore</button>
+    </div>
+  </div>
+</div>
+
+<div class="hint"><b>Tap the pill</b> to open the takeover &nbsp;·&nbsp; <b>Ignore</b> / Esc / tap the dim to dismiss</div>
+
+<script>
+  const phone = document.getElementById('phone');
+  const overlay = phone.querySelector('.overlay');
+  const tcount = document.getElementById('tcount');
+  let cntTimer, cntStart;
+
+  function countUp(){
+    clearInterval(cntTimer); clearTimeout(cntStart);
+    tcount.textContent = '0';
+    cntStart = setTimeout(()=>{
+      let n = 0;
+      cntTimer = setInterval(()=>{
+        tcount.textContent = ++n;
+        if(n >= 5) clearInterval(cntTimer);
+      }, 110);
+    }, 420);
+  }
+
+  function open(){
+    phone.classList.remove('closing');
+    phone.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+    countUp();
+  }
+  function close(){
+    if(!phone.classList.contains('open')) return;
+    phone.classList.add('closing');
+    phone.classList.remove('open');
+    overlay.setAttribute('aria-hidden','true');
+    setTimeout(()=>phone.classList.remove('closing'), 600);
+  }
+
+  document.getElementById('pill').addEventListener('click', open);
+  document.getElementById('mascot').addEventListener('click', open);
+  document.getElementById('ignore').addEventListener('click', close);
+  document.getElementById('veil').addEventListener('click', close);
+  document.addEventListener('keydown', e => { if(e.key==='Escape') close(); });
+</script>
+</body>
+</html>
